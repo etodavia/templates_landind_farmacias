@@ -88,96 +88,70 @@ const publicFormRateLimit = createRateLimiter({
     message: 'Muitas solicitacoes. Tente novamente em alguns minutos.'
 });
 
-const googleReviewRatingMap = {
-    ONE: 1,
-    TWO: 2,
-    THREE: 3,
-    FOUR: 4,
-    FIVE: 5
-};
-
-function googleReviewsConfigured() {
-    return Boolean(
-        process.env.GOOGLE_BUSINESS_ACCOUNT_ID &&
-        process.env.GOOGLE_BUSINESS_LOCATION_ID &&
-        process.env.GOOGLE_CLIENT_ID &&
-        process.env.GOOGLE_CLIENT_SECRET &&
-        process.env.GOOGLE_REFRESH_TOKEN
-    );
+function googlePlacesApiKey() {
+    return process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
 }
 
-async function getGoogleAccessToken() {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-            grant_type: 'refresh_token'
-        })
-    });
+function extractGooglePlaceId(value = '') {
+    const input = value.trim();
+    if (/^[A-Za-z0-9_-]{20,}$/.test(input) && !input.includes('/')) return input;
+    try {
+        const url = new URL(input);
+        const queryId = url.searchParams.get('query_place_id') || url.searchParams.get('place_id');
+        if (queryId) return queryId;
+        return decodeURIComponent(url.pathname).match(/!1s([A-Za-z0-9_-]{20,})/)?.[1] || '';
+    } catch (e) { return ''; }
+}
 
-    const data = await response.json();
-    if (!response.ok || !data.access_token) {
-        throw new Error(data.error_description || data.error || 'Falha ao autenticar no Google.');
+async function getPlaceDetails(input) {
+    const apiKey = googlePlacesApiKey();
+    if (!apiKey) throw new Error('Configure GOOGLE_PLACES_API_KEY no .env do servidor.');
+    let placeId = extractGooglePlaceId(input);
+    if (!placeId) {
+        const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'places.id' },
+            body: JSON.stringify({ textQuery: input, languageCode: 'pt-BR' })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error?.message || 'Empresa não localizada no Google.');
+        placeId = result.places?.[0]?.id;
     }
-    return data.access_token;
+    if (!placeId) throw new Error('Cole o link do Google Maps, Place ID ou nome completo da empresa.');
+    const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=pt-BR`, {
+        headers: { 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'id,displayName,formattedAddress,googleMapsUri,googleMapsLinks,rating,userRatingCount,reviews' }
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Não foi possível conectar esta empresa.');
+    return result;
+}
+
+async function savePlacesReviews(place) {
+    const reviews = Array.isArray(place.reviews) ? place.reviews : [];
+    let saved = 0;
+    for (const review of reviews) {
+        const text = (review.text?.text || review.originalText?.text || '').trim();
+        if (!text) continue;
+        const author = review.authorAttribution || {};
+        await pool.execute(`INSERT INTO google_reviews
+            (review_id, author_name, profile_photo_url, rating, comment, review_url, review_time, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE
+            author_name=VALUES(author_name), profile_photo_url=VALUES(profile_photo_url), rating=VALUES(rating),
+            comment=VALUES(comment), review_url=VALUES(review_url), review_time=VALUES(review_time), updated_at=NOW()`, [
+            review.name || `${place.id}-${author.displayName || 'review'}-${review.publishTime || saved}`,
+            author.displayName || 'Cliente Google', author.photoUri || null, Number(review.rating || 0), text,
+            review.googleMapsUri || place.googleMapsUri || null, review.publishTime ? new Date(review.publishTime) : null
+        ]);
+        saved++;
+    }
+    return { received: reviews.length, saved };
 }
 
 async function syncGoogleReviews() {
-    if (!googleReviewsConfigured()) {
-        throw new Error('Configure as variaveis GOOGLE_BUSINESS_* e GOOGLE_* no .env.');
-    }
-
-    const token = await getGoogleAccessToken();
-    const accountId = encodeURIComponent(process.env.GOOGLE_BUSINESS_ACCOUNT_ID);
-    const locationId = encodeURIComponent(process.env.GOOGLE_BUSINESS_LOCATION_ID);
-    const pageSize = parseInt(process.env.GOOGLE_REVIEWS_PAGE_SIZE, 10) || 20;
-    const minRating = parseInt(process.env.GOOGLE_REVIEWS_MIN_RATING, 10) || 4;
-    const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews?pageSize=${pageSize}&orderBy=updateTime desc`;
-
-    const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(data.error?.message || 'Falha ao buscar avaliacoes no Google.');
-    }
-
-    const reviews = Array.isArray(data.reviews) ? data.reviews : [];
-    let saved = 0;
-    for (const review of reviews) {
-        const rating = googleReviewRatingMap[review.starRating] || 0;
-        const text = (review.comment || '').trim();
-        if (rating < minRating || !text) continue;
-
-        const reviewer = review.reviewer || {};
-        await pool.execute(`
-            INSERT INTO google_reviews 
-                (review_id, author_name, profile_photo_url, rating, comment, review_url, review_time, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE
-                author_name = VALUES(author_name),
-                profile_photo_url = VALUES(profile_photo_url),
-                rating = VALUES(rating),
-                comment = VALUES(comment),
-                review_url = VALUES(review_url),
-                review_time = VALUES(review_time),
-                updated_at = NOW()
-        `, [
-            review.name,
-            reviewer.displayName || 'Cliente Google',
-            reviewer.profilePhotoUrl || null,
-            rating,
-            text,
-            review.reviewUrl || null,
-            review.createTime ? new Date(review.createTime) : null
-        ]);
-        saved += 1;
-    }
-
-    return { received: reviews.length, saved };
+    const [rows] = await pool.execute('SELECT place_id FROM reviews_google_connection WHERE id = 1');
+    if (!rows[0]?.place_id) throw new Error('Conecte sua empresa antes de sincronizar.');
+    const place = await getPlaceDetails(rows[0].place_id);
+    return savePlacesReviews(place);
 }
 
 // Configuração Upload Multer Centralizado
@@ -419,6 +393,21 @@ async function setupDB() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS reviews_google_connection (
+            id INT PRIMARY KEY DEFAULT 1, place_id VARCHAR(255) NOT NULL, business_name VARCHAR(255),
+            business_address TEXT, google_url TEXT, write_review_url TEXT, rating DECIMAL(3,2),
+            review_count INT DEFAULT 0, connected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS reviews_widget_settings (
+            id INT PRIMARY KEY DEFAULT 1, reviews_widget_layout VARCHAR(20) DEFAULT 'slider',
+            reviews_widget_theme VARCHAR(20) DEFAULT 'light', reviews_widget_min_rating INT DEFAULT 4,
+            reviews_widget_limit INT DEFAULT 8, reviews_widget_show_photos INT DEFAULT 1,
+            reviews_widget_show_date INT DEFAULT 1, reviews_widget_autoplay INT DEFAULT 1,
+            reviews_widget_bg VARCHAR(20) DEFAULT '#FFFFFF', reviews_widget_card_bg VARCHAR(20) DEFAULT '#F7F7F4',
+            reviews_widget_accent VARCHAR(20) DEFAULT '#F59E0B'
+        )`);
+        await pool.execute('INSERT IGNORE INTO reviews_widget_settings (id) VALUES (1)');
         await pool.execute(`
             CREATE TABLE IF NOT EXISTS equipe (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -888,6 +877,10 @@ app.get('/', async (req, res) => {
     let testimonialSource = 'manual';
 
     try {
+        try {
+            const [widgetRows] = await pool.execute('SELECT * FROM reviews_widget_settings WHERE id = 1');
+            Object.assign(res.locals.settings, widgetRows[0] || {});
+        } catch (err) {}
         // Consultar Benefícios
         [beneficios] = await pool.execute('SELECT * FROM beneficios ORDER BY ordem ASC, created_at ASC');
         [banners] = await pool.execute('SELECT * FROM banners WHERE ativo = 1 AND (posicao = "topo" OR posicao IS NULL) ORDER BY ordem ASC, created_at DESC');
@@ -919,6 +912,8 @@ app.get('/', async (req, res) => {
         } catch (err) {}
         
         try {
+            const widgetMinRating = Math.min(5, Math.max(1, parseInt(res.locals.settings?.reviews_widget_min_rating, 10) || 4));
+            const widgetLimit = Math.min(20, Math.max(1, parseInt(res.locals.settings?.reviews_widget_limit, 10) || 8));
             const [googleReviews] = await pool.execute(`
                 SELECT
                     id,
@@ -932,10 +927,10 @@ app.get('/', async (req, res) => {
                     review_time,
                     'google' AS origem
                 FROM google_reviews
-                WHERE ativo = TRUE
+                WHERE ativo = TRUE AND rating >= ?
                 ORDER BY review_time DESC, updated_at DESC
-                LIMIT 12
-            `);
+                LIMIT ${widgetLimit}
+            `, [widgetMinRating]);
             if (googleReviews.length > 0) {
                 testimonials = googleReviews;
                 testimonialSource = 'google';
@@ -1753,23 +1748,69 @@ app.post('/admin/comentarios/delete/:id', async (req, res) => {
 app.get('/admin/depoimentos', async (req, res) => {
     try {
         const [depoimentos] = await pool.execute('SELECT * FROM depoimentos ORDER BY created_at DESC');
-        let googleReviews = [];
-        try {
-            [googleReviews] = await pool.execute('SELECT * FROM google_reviews ORDER BY review_time DESC, updated_at DESC LIMIT 50');
-        } catch (e) {
-            googleReviews = [];
-        }
+        const [googleReviews] = await pool.execute('SELECT * FROM google_reviews ORDER BY review_time DESC, updated_at DESC LIMIT 50');
+        const [reviewRows] = await pool.execute('SELECT * FROM reviews_widget_settings WHERE id = 1');
+        const [connectionRows] = await pool.execute('SELECT * FROM reviews_google_connection WHERE id = 1');
+        const activeReviews = googleReviews.filter(review => Boolean(review.ativo));
         res.render('admin/depoimentos', {
-            title: 'Moderação de Depoimentos',
-            depoimentos,
-            googleReviews,
-            googleReviewsConfigured: googleReviewsConfigured(),
+            title: 'Gestor de Avaliações', depoimentos, googleReviews,
+            reviewSettings: reviewRows[0] || {}, connectedPlace: connectionRows[0] ? {
+                id: connectionRows[0].place_id, name: connectionRows[0].business_name,
+                address: connectionRows[0].business_address, url: connectionRows[0].google_url,
+                rating: connectionRows[0].rating, count: connectionRows[0].review_count,
+                connectedAt: connectionRows[0].connected_at
+            } : null,
+            placesApiConfigured: Boolean(googlePlacesApiKey()),
+            reviewStats: { total: googleReviews.length, active: activeReviews.length,
+                average: (activeReviews.length ? activeReviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / activeReviews.length : 0).toFixed(1),
+                lastSync: googleReviews[0]?.updated_at || null },
             googleSyncSuccess: req.query.google_sync === 'success',
             googleSyncError: req.query.google_sync === 'error' ? req.query.message : null,
-            googleSyncSaved: req.query.saved,
-            googleSyncReceived: req.query.received
+            googleSyncSaved: req.query.saved, googleSyncReceived: req.query.received,
+            saved: req.query.saved_settings === '1', connectionSuccess: req.query.connected === '1',
+            connectionError: req.query.connection_error || null
         });
     } catch (e) { res.redirect('/admin/dashboard'); }
+});
+app.post('/admin/depoimentos/connect-google', async (req, res) => {
+    try {
+        const place = await getPlaceDetails(req.body.google_place || '');
+        await pool.execute(`INSERT INTO reviews_google_connection
+            (id, place_id, business_name, business_address, google_url, write_review_url, rating, review_count, connected_at)
+            VALUES (1,?,?,?,?,?,?,?,NOW()) ON DUPLICATE KEY UPDATE place_id=VALUES(place_id),
+            business_name=VALUES(business_name), business_address=VALUES(business_address), google_url=VALUES(google_url),
+            write_review_url=VALUES(write_review_url), rating=VALUES(rating), review_count=VALUES(review_count), connected_at=NOW()`,
+            [place.id, place.displayName?.text || 'Empresa no Google', place.formattedAddress || '',
+             place.googleMapsUri || '', place.googleMapsLinks?.writeAReviewUri || null,
+             Number(place.rating || 0), Number(place.userRatingCount || 0)]);
+        const result = await savePlacesReviews(place);
+        res.redirect(`/admin/depoimentos?connected=1&saved=${result.saved}#conectar`);
+    } catch (e) {
+        res.redirect(`/admin/depoimentos?connection_error=${encodeURIComponent(e.message)}#conectar`);
+    }
+});
+app.post('/admin/depoimentos/disconnect-google', async (req, res) => {
+    await pool.execute('DELETE FROM reviews_google_connection WHERE id = 1');
+    res.redirect('/admin/depoimentos#conectar');
+});
+app.post('/admin/depoimentos/google/:id/toggle', async (req, res) => {
+    await pool.execute('UPDATE google_reviews SET ativo = NOT ativo WHERE id = ?', [req.params.id]);
+    res.redirect('/admin/depoimentos#avaliacoes');
+});
+app.post('/admin/depoimentos/widget', async (req, res) => {
+    const layouts = new Set(['slider','grid','list']);
+    const themes = new Set(['light','dark','minimal']);
+    const color = value => /^#[0-9a-f]{6}$/i.test(value || '') ? value : null;
+    await pool.execute(`UPDATE reviews_widget_settings SET reviews_widget_layout=?, reviews_widget_theme=?,
+        reviews_widget_min_rating=?, reviews_widget_limit=?, reviews_widget_show_photos=?,
+        reviews_widget_show_date=?, reviews_widget_autoplay=?, reviews_widget_bg=?,
+        reviews_widget_card_bg=?, reviews_widget_accent=? WHERE id=1`, [
+        layouts.has(req.body.layout) ? req.body.layout : 'slider', themes.has(req.body.theme) ? req.body.theme : 'light',
+        Math.min(5, Math.max(1, parseInt(req.body.min_rating,10)||4)), Math.min(20, Math.max(1, parseInt(req.body.limit,10)||8)),
+        req.body.show_photos ? 1:0, req.body.show_date ? 1:0, req.body.autoplay ? 1:0,
+        color(req.body.background)||'#FFFFFF', color(req.body.card_background)||'#F7F7F4', color(req.body.accent)||'#F59E0B'
+    ]);
+    res.redirect('/admin/depoimentos?saved_settings=1#widget');
 });
 app.post('/admin/depoimentos/sync-google', async (req, res) => {
     try {

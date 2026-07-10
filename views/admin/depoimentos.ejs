@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -6,135 +6,325 @@
     <title><%= title %> | <%= settings.site_name || 'Sistema' %></title>
     <link rel="stylesheet" href="/css/admin.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        .reviews-page { max-width: 1500px; margin: 0 auto; }
+        .reviews-header { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:30px; }
+        .reviews-header h1 { margin:0 0 7px; }
+        .reviews-header p { color:#64748b; margin:0; }
+        .header-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+        .review-btn { border:0; border-radius:12px; padding:12px 18px; font:800 .75rem Inter,sans-serif; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; }
+        .review-btn.primary { background:#1a73e8; color:#fff; }
+        .review-btn.dark { background:#0a1128; color:#fff; }
+        .review-btn.soft { background:#fff; color:#0a1128; border:1px solid #e2e8f0; }
+        .review-btn.green { background:#16a34a; color:#fff; width:100%; justify-content:center; padding:15px; }
+        .review-alert { padding:14px 18px; border-radius:14px; margin-bottom:18px; font-size:.82rem; font-weight:700; }
+        .review-alert.success { background:#ecfdf5; color:#047857; border:1px solid #bbf7d0; }
+        .review-alert.warning { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+        .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px; }
+        .stat-card { background:#fff; border:1px solid #e8edf3; border-radius:18px; padding:21px; box-shadow:0 8px 24px rgba(15,23,42,.03); }
+        .stat-icon { width:40px; height:40px; border-radius:12px; background:#eff6ff; color:#1a73e8; display:grid; place-items:center; margin-bottom:15px; font-size:1.15rem; }
+        .stat-label { color:#94a3b8; text-transform:uppercase; font-size:.65rem; font-weight:900; letter-spacing:.08em; }
+        .stat-value { color:#0f172a; font-size:1.65rem; font-weight:900; margin-top:5px; }
+        .reviews-tabs { display:flex; gap:6px; background:#e9eef5; padding:5px; border-radius:14px; width:max-content; margin-bottom:22px; }
+        .reviews-tab { padding:10px 18px; border-radius:10px; color:#64748b; font-size:.75rem; font-weight:900; text-decoration:none; cursor:pointer; border:0; background:transparent; }
+        .reviews-tab.active { color:#0f172a; background:#fff; box-shadow:0 2px 8px rgba(15,23,42,.08); }
+        .reviews-panel { display:none; }
+        .reviews-panel.active { display:block; }
+        .panel-card { background:#fff; border:1px solid #e5eaf0; border-radius:20px; padding:24px; }
+        .panel-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:20px; }
+        .panel-heading h2 { margin:0; font-size:1.05rem; color:#0f172a; }
+        .panel-heading p { margin:5px 0 0; color:#94a3b8; font-size:.76rem; }
+        .review-filters { display:flex; gap:10px; flex-wrap:wrap; }
+        .review-filters input,.review-filters select { border:1px solid #dbe2ea; border-radius:10px; padding:10px 12px; font:600 .75rem Inter; background:#fff; }
+        .reviews-table { width:100%; border-collapse:collapse; }
+        .reviews-table th { padding:12px; background:#f8fafc; }
+        .reviews-table td { padding:15px 12px; border-bottom:1px solid #f1f5f9; }
+        .review-author { display:flex; align-items:center; gap:11px; min-width:180px; }
+        .review-author img { width:39px; height:39px; border-radius:50%; object-fit:cover; background:#e2e8f0; }
+        .review-author strong { display:block; color:#0f172a; font-size:.8rem; }
+        .review-author span { display:block; color:#94a3b8; font-size:.66rem; margin-top:3px; }
+        .stars { color:#f59e0b; white-space:nowrap; font-size:.8rem; }
+        .review-copy { color:#475569; line-height:1.45; font-size:.76rem; max-width:520px; }
+        .status-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:999px; font-size:.62rem; font-weight:900; }
+        .status-pill.on { color:#15803d; background:#dcfce7; }
+        .status-pill.off { color:#64748b; background:#f1f5f9; }
+        .toggle-btn { border:1px solid #dbe2ea; background:#fff; padding:7px 10px; border-radius:9px; cursor:pointer; color:#475569; font-weight:800; font-size:.67rem; }
+        .widget-grid { display:grid; grid-template-columns:minmax(300px,390px) 1fr; gap:22px; align-items:start; }
+        .settings-form h3 { font-size:.76rem; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin:0 0 14px; }
+        .settings-group { margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #f1f5f9; }
+        .layout-options { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+        .layout-option input { display:none; }
+        .layout-option span { border:2px solid #edf1f5; border-radius:11px; padding:12px 6px; text-align:center; display:block; color:#64748b; font-size:.69rem; font-weight:800; cursor:pointer; }
+        .layout-option input:checked + span { border-color:#1a73e8; color:#1a73e8; background:#eff6ff; }
+        .setting-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .setting-field label { display:block; color:#475569; font-size:.68rem; font-weight:800; margin-bottom:7px; }
+        .setting-field select,.setting-field input[type=number] { width:100%; border:1px solid #dbe2ea; border-radius:10px; padding:10px; font:600 .75rem Inter; }
+        .color-field { display:flex; align-items:center; gap:8px; }
+        .color-field input[type=color] { width:42px; height:38px; border:1px solid #dbe2ea; border-radius:9px; padding:3px; background:#fff; }
+        .switch-row { display:flex; align-items:center; justify-content:space-between; color:#475569; font-size:.75rem; font-weight:700; margin:11px 0; }
+        .switch-row input { width:18px; height:18px; accent-color:#1a73e8; }
+        .preview-shell { background:#eef2f6; border-radius:18px; padding:20px; position:sticky; top:20px; }
+        .preview-label { display:flex; justify-content:space-between; color:#64748b; font-size:.68rem; font-weight:900; text-transform:uppercase; margin-bottom:13px; }
+        .widget-preview { padding:34px 22px; border-radius:14px; min-height:360px; transition:.2s; }
+        .preview-title { text-align:center; font-size:1.45rem; margin:0 0 22px; color:#0f172a; }
+        .preview-reviews { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .preview-review { border-radius:14px; padding:17px; box-shadow:0 5px 16px rgba(15,23,42,.05); }
+        .preview-review header { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+        .preview-review img { width:35px; height:35px; border-radius:50%; object-fit:cover; }
+        .preview-review strong { display:block; font-size:.72rem; }
+        .preview-review p { font-size:.69rem; line-height:1.5; color:#64748b; margin:8px 0 0; }
+        .manual-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:16px; }
+        .manual-card { border:1px solid #e8edf3; border-radius:16px; padding:20px; }
+        .empty-state { text-align:center; padding:55px 20px; color:#94a3b8; background:#f8fafc; border-radius:16px; }
+        .setup-steps { display:grid; grid-template-columns:repeat(4,1fr); background:#fff; border:1px solid #e5eaf0; border-radius:16px; margin-bottom:22px; overflow:hidden; }
+        .setup-step { display:flex; align-items:center; gap:10px; padding:16px; color:#64748b; font-size:.72rem; font-weight:800; border-right:1px solid #edf1f5; cursor:pointer; }
+        .setup-step:last-child { border-right:0; }
+        .setup-step b { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; background:#e2e8f0; color:#64748b; }
+        .setup-step.done b,.setup-step.current b { background:#169b70; color:#fff; }
+        .setup-step.current { color:#0f172a; box-shadow:inset 0 -3px #169b70; }
+        .connect-card { border-left:5px solid #169b70; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+        .connected-business { display:flex; align-items:center; gap:16px; }
+        .google-mark { width:52px; height:52px; border-radius:14px; background:#fff; border:1px solid #e5eaf0; display:grid; place-items:center; color:#4285f4; font-size:1.55rem; }
+        .connected-business h3 { margin:0 0 5px; color:#0f172a; font-size:.95rem; }
+        .connected-business p { margin:0 0 5px; color:#64748b; font-size:.72rem; }
+        .connected-business a { color:#0284c7; font-size:.71rem; overflow-wrap:anywhere; }
+        .connect-form { max-width:780px; margin:28px auto; text-align:center; }
+        .connect-form .google-mark { margin:0 auto 15px; }
+        .connect-form h2 { margin:0 0 8px; color:#0f172a; }
+        .connect-form p { color:#64748b; font-size:.8rem; line-height:1.6; }
+        .connect-input { display:flex; gap:9px; margin-top:20px; }
+        .connect-input input { flex:1; border:2px solid #dbe2ea; border-radius:12px; padding:14px 16px; font:600 .8rem Inter; min-width:0; }
+        .connect-help { background:#f8fafc; border:1px dashed #cbd5e1; border-radius:13px; padding:14px; margin-top:18px; text-align:left; font-size:.72rem; color:#64748b; line-height:1.55; }
+        @media(max-width:1050px){.stats-grid{grid-template-columns:repeat(2,1fr)}.widget-grid{grid-template-columns:1fr}.preview-shell{position:static}}
+        @media(max-width:700px){.reviews-header{display:block}.header-actions{justify-content:flex-start;margin-top:18px}.stats-grid{grid-template-columns:1fr 1fr}.panel-card{padding:16px}.panel-heading{display:block}.review-filters{margin-top:14px}.reviews-table{min-width:760px}.table-scroll{overflow:auto}.preview-reviews{grid-template-columns:1fr}.setup-steps{grid-template-columns:1fr 1fr}.connect-card{display:block}.connect-card form{margin-top:15px}.connect-input{display:block}.connect-input button{width:100%;justify-content:center;margin-top:9px}}
+    </style>
 </head>
 <body>
-    <div class="admin-app">
-        <%- include('../partials/admin-sidebar') %>
-        
-        <div class="admin-main">
-            <%- include('../partials/admin-header') %>
-            <div class="admin-content-scroll">
-                <div style="padding: 2.5rem 4rem;">
-                    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
-                        <div>
-                            <h1 style="font-size: 2.2rem; margin: 0;">Moderação de <em>Depoimentos</em></h1>
-                            <p style="color: #888; font-size: 0.95rem; margin-top: 5px;">Aprovação de provas sociais e autoridade de clientes.</p>
-                        </div>
-                        <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: flex-end;">
-                            <form action="/admin/depoimentos/sync-google" method="POST" style="display: inline;">
-                                <button type="submit" style="background: <%= googleReviewsConfigured ? '#1a73e8' : '#94a3b8' %>; color: white; padding: 12px 25px; border-radius: 50px; border: none; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                    <i class="ri-google-fill"></i> SINCRONIZAR GOOGLE
-                                </button>
+<div class="admin-app">
+    <%- include('../partials/admin-sidebar') %>
+    <div class="admin-main">
+        <%- include('../partials/admin-header') %>
+        <div class="admin-content-scroll">
+            <main class="reviews-page">
+                <header class="reviews-header">
+                    <div>
+                        <h1>Gestor de <em>Avaliações</em></h1>
+                        <p>Controle o que aparece no site e personalize o widget em tempo real.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="review-btn dark" type="button" onclick="copyCollectionLink()"><i class="ri-link"></i> Copiar link de coleta</button>
+                        <a class="review-btn soft" href="/" target="_blank"><i class="ri-external-link-line"></i> Ver no site</a>
+                    </div>
+                </header>
+
+                <% if (googleSyncSuccess) { %><div class="review-alert success"><i class="ri-checkbox-circle-fill"></i> Sincronização concluída: <%= googleSyncSaved || 0 %> avaliações salvas de <%= googleSyncReceived || 0 %> recebidas.</div><% } %>
+                <% if (connectionSuccess) { %><div class="review-alert success"><i class="ri-checkbox-circle-fill"></i> Empresa conectada ao Google com sucesso.</div><% } %>
+                <% if (saved) { %><div class="review-alert success"><i class="ri-checkbox-circle-fill"></i> Configurações do widget salvas e aplicadas ao site.</div><% } %>
+                <% if (googleSyncError) { %><div class="review-alert warning"><i class="ri-error-warning-fill"></i> Não foi possível sincronizar: <%= googleSyncError %></div><% } %>
+                <% if (connectionError) { %><div class="review-alert warning"><i class="ri-error-warning-fill"></i> Não foi possível conectar: <%= connectionError %></div><% } %>
+
+                <section class="stats-grid">
+                    <div class="stat-card"><div class="stat-icon"><i class="ri-star-fill"></i></div><div class="stat-label">Nota média publicada</div><div class="stat-value"><%= reviewStats.average %> <small style="font-size:.7rem;color:#f59e0b">/ 5</small></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="ri-chat-3-fill"></i></div><div class="stat-label">Avaliações importadas</div><div class="stat-value"><%= reviewStats.total %></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="ri-eye-fill"></i></div><div class="stat-label">Publicadas no site</div><div class="stat-value"><%= reviewStats.active %></div></div>
+                    <div class="stat-card"><div class="stat-icon"><i class="ri-time-fill"></i></div><div class="stat-label">Última atualização</div><div class="stat-value" style="font-size:1rem;margin-top:12px"><%= reviewStats.lastSync ? new Date(reviewStats.lastSync).toLocaleDateString('pt-BR') : 'Ainda não sincronizado' %></div></div>
+                </section>
+
+                <nav class="setup-steps">
+                    <button class="setup-step current" data-tab="conectar"><b>1</b> Conectar Google</button>
+                    <button class="setup-step <%= connectedPlace ? 'done' : '' %>" data-tab="widget"><b>2</b> Layout e estilo</button>
+                    <button class="setup-step <%= connectedPlace ? 'done' : '' %>" data-tab="avaliacoes"><b>3</b> Selecionar avaliações</button>
+                    <button class="setup-step <%= saved ? 'done' : '' %>" data-tab="widget"><b>4</b> Publicar widget</button>
+                </nav>
+
+                <nav class="reviews-tabs">
+                    <button class="reviews-tab active" data-tab="conectar">Conexão</button>
+                    <button class="reviews-tab" data-tab="avaliacoes">Avaliações</button>
+                    <button class="reviews-tab" data-tab="widget">Personalizar widget</button>
+                    <button class="reviews-tab" data-tab="manuais">Coleta manual <%= depoimentos.filter(d => !d.aprovado).length ? `(${depoimentos.filter(d => !d.aprovado).length})` : '' %></button>
+                </nav>
+
+                <section class="reviews-panel active" id="conectar">
+                    <% if (connectedPlace) { %>
+                        <div class="panel-card connect-card">
+                            <div class="connected-business">
+                                <div class="google-mark"><i class="ri-google-fill"></i></div>
+                                <div>
+                                    <h3><%= connectedPlace.name %></h3>
+                                    <p><%= connectedPlace.address %></p>
+                                    <p><span class="stars"><i class="ri-star-fill"></i></span> <strong><%= connectedPlace.rating || '—' %></strong> · <%= connectedPlace.count || 0 %> avaliações no Google</p>
+                                    <% if (connectedPlace.url) { %><a href="<%= connectedPlace.url %>" target="_blank" rel="noopener"><%= connectedPlace.url %></a><% } %>
+                                </div>
+                            </div>
+                            <form action="/admin/depoimentos/disconnect-google" method="POST" onsubmit="return confirm('Desconectar esta empresa? As avaliações já importadas permanecerão no cache.')">
+                                <button class="review-btn soft" type="submit">Desconectar</button>
                             </form>
-                            <button onclick="copyTestimonialLink()" style="background: #0A1128; color: white; padding: 12px 25px; border-radius: 50px; border: none; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <i class="ri-file-copy-line"></i> COPIAR LINK DE COLETA
-                            </button>
-                            <a href="/colher-depoimento" target="_blank" style="background: #f1f5f9; color: #0A1128; padding: 12px 25px; border-radius: 50px; text-decoration: none; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;"><i class="ri-external-link-line"></i> VER PÁGINA</a>
                         </div>
-                    </header>
-
-                    <script>
-                        function copyTestimonialLink() {
-                            const link = window.location.origin + '/colher-depoimento';
-                            navigator.clipboard.writeText(link).then(() => {
-                                alert('Link copiado para a área de transferência!');
-                            });
-                        }
-                    </script>
-
-                    <% if (googleSyncSuccess) { %>
-                        <div style="background: #ecfdf5; border: 1px solid #bbf7d0; color: #047857; padding: 16px 20px; border-radius: 18px; margin-bottom: 25px; font-size: 0.85rem; font-weight: 800;">
-                            <i class="ri-checkbox-circle-fill"></i> Google sincronizado: <%= googleSyncSaved || 0 %> avaliações salvas de <%= googleSyncReceived || 0 %> recebidas.
-                        </div>
-                    <% } %>
-                    <% if (googleSyncError) { %>
-                        <div style="background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; padding: 16px 20px; border-radius: 18px; margin-bottom: 25px; font-size: 0.85rem; font-weight: 800;">
-                            <i class="ri-error-warning-fill"></i> Não foi possível sincronizar: <%= googleSyncError %>
-                        </div>
-                    <% } %>
-                    <% if (!googleReviewsConfigured) { %>
-                        <div style="background: #f8fafc; border: 1px dashed #cbd5e1; color: #64748b; padding: 16px 20px; border-radius: 18px; margin-bottom: 25px; font-size: 0.85rem; line-height: 1.5;">
-                            Para ativar a sincronização, preencha no <strong>.env</strong>: GOOGLE_BUSINESS_ACCOUNT_ID, GOOGLE_BUSINESS_LOCATION_ID, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN.
-                        </div>
-                    <% } %>
-
-                    <section style="background: white; border: 1px solid #f0f0f0; border-radius: 28px; padding: 30px; margin-bottom: 35px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px;">
-                            <div>
-                                <h2 style="font-size: 1.2rem; margin: 0; color: var(--admin-marinho);">Avaliações do Google</h2>
-                                <p style="margin: 5px 0 0; color: #94a3b8; font-size: 0.8rem;">Essas avaliações aparecem primeiro na home quando houver itens sincronizados.</p>
+                        <div class="panel-card" style="margin-top:18px">
+                            <div class="panel-heading"><div><h2>Google conectado</h2><p>Agora escolha o layout e o estilo do widget ou atualize as avaliações.</p></div></div>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                                <button class="review-btn dark" type="button" onclick="activateTab('widget');location.hash='widget'"><i class="ri-layout-4-line"></i> Escolher layout</button>
+                                <form action="/admin/depoimentos/sync-google" method="POST"><button class="review-btn primary" type="submit"><i class="ri-refresh-line"></i> Atualizar avaliações</button></form>
                             </div>
-                            <span style="font-size: 0.75rem; font-weight: 900; color: #1a73e8; background: #eff6ff; padding: 8px 12px; border-radius: 999px;"><%= googleReviews.length %> no cache</span>
                         </div>
-                        <% if (googleReviews.length === 0) { %>
-                            <div style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 20px; color: #94a3b8;">
-                                <i class="ri-google-fill" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                                Nenhuma avaliação do Google sincronizada ainda.
+                    <% } else { %>
+                        <div class="panel-card">
+                            <form class="connect-form" action="/admin/depoimentos/connect-google" method="POST">
+                                <div class="google-mark"><i class="ri-google-fill"></i></div>
+                                <h2>Conectar Google</h2>
+                                <p>Encontre sua empresa pelo link do Google Maps, pelo Place ID ou digitando o nome completo com a cidade.</p>
+                                <div class="connect-input">
+                                    <input type="text" name="google_place" required placeholder="Cole o link do Google Maps ou digite Empresa, Cidade">
+                                    <button class="review-btn primary" type="submit"><i class="ri-link"></i> Conectar</button>
+                                </div>
+                                <% if (!placesApiConfigured) { %>
+                                    <div class="connect-help"><strong>Configuração única necessária:</strong> adicione <code>GOOGLE_PLACES_API_KEY</code> ao arquivo <code>.env</code> do servidor e ative a Places API (New). Depois disso, qualquer administrador conecta a empresa apenas por esta tela.</div>
+                                <% } else { %>
+                                    <div class="connect-help"><i class="ri-shield-check-line"></i> A chave da plataforma já está configurada. Ela fica protegida no servidor e não aparece para os usuários do painel.</div>
+                                <% } %>
+                            </form>
+                        </div>
+                    <% } %>
+                </section>
+
+                <section class="reviews-panel" id="avaliacoes">
+                    <div class="panel-card">
+                        <div class="panel-heading">
+                            <div><h2>Avaliações do Google</h2><p>Desative uma avaliação para removê-la do site sem apagá-la do cache.</p></div>
+                            <div class="review-filters">
+                                <input id="reviewSearch" type="search" placeholder="Buscar por nome ou texto">
+                                <select id="ratingFilter"><option value="">Todas as notas</option><option value="5">5 estrelas</option><option value="4">4 estrelas</option><option value="3">3 estrelas</option><option value="2">2 estrelas</option><option value="1">1 estrela</option></select>
+                                <select id="statusFilter"><option value="">Todos os status</option><option value="on">Publicadas</option><option value="off">Ocultas</option></select>
                             </div>
+                        </div>
+                        <% if (!googleReviews.length) { %>
+                            <div class="empty-state"><i class="ri-google-fill" style="font-size:2rem"></i><p>Nenhuma avaliação sincronizada ainda.</p></div>
                         <% } else { %>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px;">
-                                <% googleReviews.slice(0, 6).forEach(g => { %>
-                                    <article style="background: #f8fafc; border-radius: 20px; padding: 22px; border: 1px solid #eef2f7;">
-                                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                            <img src="<%= g.profile_photo_url || '/img/placeholder-user.png' %>" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover;">
-                                            <div>
-                                                <strong style="display: block; color: #0A1128; font-size: 0.9rem;"><%= g.author_name %></strong>
-                                                <span style="color: #f59e0b; font-size: 0.85rem;">
-                                                    <% for (let i = 1; i <= 5; i++) { %><i class="<%= i <= g.rating ? 'ri-star-fill' : 'ri-star-line' %>"></i><% } %>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <p style="font-size: 0.85rem; color: #475569; line-height: 1.55; margin: 0;"><%= g.comment %></p>
-                                    </article>
+                            <div class="table-scroll"><table class="reviews-table">
+                                <thead><tr><th>Cliente</th><th>Nota</th><th>Avaliação</th><th>Status</th><th>Ação</th></tr></thead>
+                                <tbody>
+                                <% googleReviews.forEach(g => { %>
+                                    <tr class="review-row" data-rating="<%= g.rating %>" data-status="<%= g.ativo ? 'on' : 'off' %>" data-search="<%= `${g.author_name} ${g.comment}`.toLowerCase() %>">
+                                        <td><div class="review-author"><img src="<%= g.profile_photo_url || '/img/placeholder-user.svg' %>" onerror="this.src='/img/placeholder-user.svg'"><div><strong><%= g.author_name %></strong><span><%= g.review_time ? new Date(g.review_time).toLocaleDateString('pt-BR') : 'Google' %></span></div></div></td>
+                                        <td><div class="stars"><% for(let i=1;i<=5;i++){ %><i class="<%= i<=g.rating ? 'ri-star-fill':'ri-star-line' %>"></i><% } %></div></td>
+                                        <td><div class="review-copy"><%= g.comment %></div></td>
+                                        <td><span class="status-pill <%= g.ativo ? 'on':'off' %>"><i class="<%= g.ativo ? 'ri-checkbox-circle-fill':'ri-eye-off-fill' %>"></i><%= g.ativo ? 'Publicada':'Oculta' %></span></td>
+                                        <td><form action="/admin/depoimentos/google/<%= g.id %>/toggle" method="POST"><button class="toggle-btn" type="submit"><%= g.ativo ? 'Ocultar':'Publicar' %></button></form></td>
+                                    </tr>
                                 <% }) %>
-                            </div>
-                        <% } %>
-                    </section>
-
-                    <div class="testimonials-list">
-                        <% if (depoimentos.length === 0) { %>
-                            <div style="text-align: center; padding: 80px; background: white; border-radius: 30px; border: 1px solid #f0f0f0; color: #aaa;">
-                                <i class="ri-chat-quote-line" style="font-size: 3rem; display: block; margin-bottom: 15px; opacity: 0.2;"></i>
-                                <p>Nenhum depoimento enviado ainda.</p>
-                            </div>
-                        <% } else { %>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px;">
-                                <% depoimentos.forEach(d => { %>
-                                    <div style="background: white; padding: 30px; border-radius: 25px; border: 1px solid #f0f0f0; position: relative; transition: 0.3s;" onmouseover="this.style.borderColor='var(--admin-marinho)'" onmouseout="this.style.borderColor='#f0f0f0'">
-                                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
-                                            <img src="<%= d.foto || '/img/placeholder-user.png' %>" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc;">
-                                            <div>
-                                                <h4 style="margin: 0; color: var(--admin-marinho);"><%= d.nome %></h4>
-                                                <p style="margin: 0; font-size: 0.75rem; color: #888;"><%= d.cargo %> @ <%= d.empresa %></p>
-                                            </div>
-                                        </div>
-                                        <p style="font-style: italic; color: #444; font-size: 0.9rem; line-height: 1.6; margin-bottom: 25px;">"<%= d.texto %>"</p>
-                                        
-                                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; pt: 20px; padding-top: 20px;">
-                                            <span style="font-size: 0.7rem; color: <%= d.aprovado ? '#10b981' : '#f59e0b' %>; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
-                                                <%= d.aprovado ? '✓ APROVADO' : '● PENDENTE' %>
-                                            </span>
-                                            <div style="display: flex; gap: 8px;">
-                                                <% if (!d.aprovado) { %>
-                                                    <form action="/admin/depoimentos/aprovar/<%= d.id %>" method="POST" style="display: inline;">
-                                                        <button type="submit" class="btn-action" style="background: #ecfdf5; color: #10b981; border: none; padding: 8px 15px; border-radius: 12px; font-size: 0.7rem; font-weight: 800; cursor: pointer;">APROVAR</button>
-                                                    </form>
-                                                <% } %>
-                                                <form action="/admin/depoimentos/delete/<%= d.id %>" method="POST" style="display: inline;" onsubmit="return confirm('Excluir depoimento permanentemente?')">
-                                                    <button type="submit" class="btn-action" style="background: #fff1f2; color: #e11d48; border: none; padding: 8px 12px; border-radius: 12px; font-size: 0.7rem; font-weight: 800; cursor: pointer;"><i class="ri-delete-bin-line"></i></button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <% }) %>
-                            </div>
+                                </tbody>
+                            </table></div>
                         <% } %>
                     </div>
-                </div>
-                <%- include('../partials/admin-footer') %>
-            </div>
+                </section>
+
+                <section class="reviews-panel" id="widget">
+                    <div class="widget-grid">
+                        <form class="panel-card settings-form" action="/admin/depoimentos/widget" method="POST" id="widgetForm">
+                            <div class="settings-group">
+                                <h3>Formato</h3>
+                                <div class="layout-options">
+                                    <% [['slider','Carrossel','ri-gallery-view-2'],['grid','Grade','ri-grid-fill'],['list','Lista','ri-list-check']].forEach(opt => { %>
+                                        <label class="layout-option"><input type="radio" name="layout" value="<%= opt[0] %>" <%= (reviewSettings.reviews_widget_layout || 'slider') === opt[0] ? 'checked':'' %>><span><i class="<%= opt[2] %>"></i><br><%= opt[1] %></span></label>
+                                    <% }) %>
+                                </div>
+                            </div>
+                            <div class="settings-group">
+                                <h3>Exibição</h3>
+                                <div class="setting-row">
+                                    <div class="setting-field"><label>Tema</label><select name="theme"><option value="light" <%= reviewSettings.reviews_widget_theme==='light'?'selected':'' %>>Claro</option><option value="dark" <%= reviewSettings.reviews_widget_theme==='dark'?'selected':'' %>>Escuro</option><option value="minimal" <%= reviewSettings.reviews_widget_theme==='minimal'?'selected':'' %>>Minimalista</option></select></div>
+                                    <div class="setting-field"><label>Nota mínima</label><select name="min_rating"><% for(let i=5;i>=1;i--){ %><option value="<%= i %>" <%= Number(reviewSettings.reviews_widget_min_rating || 4)===i?'selected':'' %>><%= i %> estrelas</option><% } %></select></div>
+                                    <div class="setting-field"><label>Quantidade</label><input type="number" name="limit" min="1" max="20" value="<%= reviewSettings.reviews_widget_limit || 8 %>"></div>
+                                </div>
+                                <label class="switch-row">Mostrar fotos <input type="checkbox" name="show_photos" <%= Number(reviewSettings.reviews_widget_show_photos ?? 1)?'checked':'' %>></label>
+                                <label class="switch-row">Mostrar data <input type="checkbox" name="show_date" <%= Number(reviewSettings.reviews_widget_show_date ?? 1)?'checked':'' %>></label>
+                                <label class="switch-row">Rotação automática <input type="checkbox" name="autoplay" <%= Number(reviewSettings.reviews_widget_autoplay ?? 1)?'checked':'' %>></label>
+                            </div>
+                            <div class="settings-group">
+                                <h3>Cores</h3>
+                                <div class="setting-row">
+                                    <div class="setting-field"><label>Fundo</label><div class="color-field"><input type="color" name="background" value="<%= reviewSettings.reviews_widget_bg || '#FFFFFF' %>"></div></div>
+                                    <div class="setting-field"><label>Cards</label><div class="color-field"><input type="color" name="card_background" value="<%= reviewSettings.reviews_widget_card_bg || '#F7F7F4' %>"></div></div>
+                                    <div class="setting-field"><label>Estrelas</label><div class="color-field"><input type="color" name="accent" value="<%= reviewSettings.reviews_widget_accent || '#F59E0B' %>"></div></div>
+                                </div>
+                            </div>
+                            <button class="review-btn green" type="submit"><i class="ri-save-line"></i> Salvar e publicar</button>
+                        </form>
+                        <div class="preview-shell">
+                            <div class="preview-label"><span>Prévia ao vivo</span><span>Desktop</span></div>
+                            <div class="widget-preview" id="widgetPreview">
+                                <h2 class="preview-title">O que dizem nossos clientes</h2>
+                                <div class="preview-reviews" id="previewReviews">
+                                    <% (googleReviews.length ? googleReviews.filter(g=>g.ativo).slice(0,4) : [{author_name:'Mariana Silva',rating:5,comment:'Atendimento excelente e serviço realizado com muito cuidado.'},{author_name:'Carlos Souza',rating:5,comment:'Equipe pontual, organizada e muito profissional.'}]).forEach(g => { %>
+                                        <article class="preview-review">
+                                            <header><img class="preview-photo" src="<%= g.profile_photo_url || '/img/placeholder-user.svg' %>"><div><strong><%= g.author_name %></strong><div class="stars"><% for(let i=1;i<=5;i++){ %><i class="<%= i<=g.rating?'ri-star-fill':'ri-star-line' %>"></i><% } %></div></div></header>
+                                            <p><%= g.comment %></p>
+                                        </article>
+                                    <% }) %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="reviews-panel" id="manuais">
+                    <div class="panel-card">
+                        <div class="panel-heading"><div><h2>Depoimentos enviados pelo formulário</h2><p>Aprove os conteúdos recebidos pelo link de coleta.</p></div><a class="review-btn soft" href="/colher-depoimento" target="_blank">Abrir formulário</a></div>
+                        <% if (!depoimentos.length) { %><div class="empty-state">Nenhum depoimento manual recebido.</div><% } else { %>
+                            <div class="manual-grid"><% depoimentos.forEach(d => { %><article class="manual-card"><div class="review-author"><img src="<%= d.foto || '/img/placeholder-user.svg' %>"><div><strong><%= d.nome %></strong><span><%= d.cargo %><%= d.empresa ? ` · ${d.empresa}` : '' %></span></div></div><p class="review-copy" style="margin:16px 0">“<%= d.texto %>”</p><div style="display:flex;justify-content:space-between;align-items:center"><span class="status-pill <%= d.aprovado?'on':'off' %>"><%= d.aprovado?'Aprovado':'Pendente' %></span><div style="display:flex;gap:7px"><% if(!d.aprovado){ %><form action="/admin/depoimentos/aprovar/<%= d.id %>" method="POST"><button class="toggle-btn">Aprovar</button></form><% } %><form action="/admin/depoimentos/delete/<%= d.id %>" method="POST" onsubmit="return confirm('Excluir este depoimento?')"><button class="toggle-btn" style="color:#dc2626"><i class="ri-delete-bin-line"></i></button></form></div></div></article><% }) %></div>
+                        <% } %>
+                    </div>
+                </section>
+            </main>
+            <%- include('../partials/admin-footer') %>
         </div>
     </div>
+</div>
+<script>
+    const tabs = document.querySelectorAll('.reviews-tab, .setup-step');
+    const panels = document.querySelectorAll('.reviews-panel');
+    function activateTab(id) {
+        tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === id));
+        document.querySelectorAll('.setup-step').forEach(step => step.classList.toggle('current', step.dataset.tab === id));
+        panels.forEach(panel => panel.classList.toggle('active', panel.id === id));
+    }
+    tabs.forEach(tab => tab.addEventListener('click', () => { activateTab(tab.dataset.tab); history.replaceState(null, '', `#${tab.dataset.tab}`); }));
+    if (location.hash) activateTab(location.hash.slice(1));
+
+    function filterReviews() {
+        const text = document.getElementById('reviewSearch').value.toLowerCase();
+        const rating = document.getElementById('ratingFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        document.querySelectorAll('.review-row').forEach(row => {
+            row.style.display = (!text || row.dataset.search.includes(text)) && (!rating || row.dataset.rating === rating) && (!status || row.dataset.status === status) ? '' : 'none';
+        });
+    }
+    ['reviewSearch','ratingFilter','statusFilter'].forEach(id => document.getElementById(id)?.addEventListener('input', filterReviews));
+    function copyCollectionLink() {
+        navigator.clipboard.writeText(`${location.origin}/colher-depoimento`).then(() => alert('Link de coleta copiado.'));
+    }
+
+    const widgetForm = document.getElementById('widgetForm');
+    function updatePreview() {
+        if (!widgetForm) return;
+        const data = new FormData(widgetForm);
+        const preview = document.getElementById('widgetPreview');
+        const cards = document.getElementById('previewReviews');
+        const theme = data.get('theme');
+        preview.style.background = data.get('background');
+        preview.style.color = theme === 'dark' ? '#fff' : '#0f172a';
+        preview.querySelector('.preview-title').style.color = theme === 'dark' ? '#fff' : '#0f172a';
+        cards.style.gridTemplateColumns = data.get('layout') === 'list' ? '1fr' : 'repeat(2, 1fr)';
+        cards.querySelectorAll('.preview-review').forEach(card => {
+            card.style.background = data.get('card_background');
+            card.style.border = theme === 'minimal' ? '0' : '1px solid rgba(148,163,184,.18)';
+        });
+        cards.querySelectorAll('.stars').forEach(stars => stars.style.color = data.get('accent'));
+        cards.querySelectorAll('.preview-photo').forEach(photo => photo.style.display = data.has('show_photos') ? '' : 'none');
+    }
+    widgetForm?.addEventListener('input', updatePreview);
+    updatePreview();
+</script>
 </body>
 </html>
