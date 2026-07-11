@@ -142,8 +142,11 @@ async function getPlaceDetails(input) {
 
 async function savePlacesReviews(place) {
     const reviews = Array.isArray(place.reviews) ? place.reviews : [];
+    const [deletedRows] = await pool.execute('SELECT review_id FROM google_reviews_deleted');
+    const deletedReviewIds = new Set(deletedRows.map(row => row.review_id));
     let saved = 0;
     for (const review of reviews) {
+        if (deletedReviewIds.has(review.name)) continue;
         const text = (review.text?.text || review.originalText?.text || '').trim();
         if (!text) continue;
         const author = review.authorAttribution || {};
@@ -405,6 +408,12 @@ async function setupDB() {
                 ativo BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.execute(`
+            CREATE TABLE IF NOT EXISTS google_reviews_deleted (
+                review_id VARCHAR(255) PRIMARY KEY,
+                deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
         await pool.execute(`CREATE TABLE IF NOT EXISTS reviews_google_connection (
@@ -1821,6 +1830,14 @@ app.post('/admin/depoimentos/disconnect-google', async (req, res) => {
 });
 app.post('/admin/depoimentos/google/:id/toggle', async (req, res) => {
     await pool.execute('UPDATE google_reviews SET ativo = NOT ativo WHERE id = ?', [req.params.id]);
+    res.redirect('/admin/depoimentos#avaliacoes');
+});
+app.post('/admin/depoimentos/google/:id/delete', async (req, res) => {
+    const [rows] = await pool.execute('SELECT review_id FROM google_reviews WHERE id = ?', [req.params.id]);
+    if (rows[0]?.review_id) {
+        await pool.execute('INSERT IGNORE INTO google_reviews_deleted (review_id) VALUES (?)', [rows[0].review_id]);
+        await pool.execute('DELETE FROM google_reviews WHERE id = ?', [req.params.id]);
+    }
     res.redirect('/admin/depoimentos#avaliacoes');
 });
 app.post('/admin/depoimentos/widget', async (req, res) => {

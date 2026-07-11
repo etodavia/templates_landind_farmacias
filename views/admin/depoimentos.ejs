@@ -191,7 +191,7 @@
                 <section class="reviews-panel" id="avaliacoes">
                     <div class="panel-card">
                         <div class="panel-heading">
-                            <div><h2>Avaliações do Google</h2><p>Desative uma avaliação para removê-la do site sem apagá-la do cache.</p></div>
+                            <div><h2>Avaliações do Google</h2><p>Oculte temporariamente ou exclua definitivamente uma avaliação do site.</p></div>
                             <div class="review-filters">
                                 <input id="reviewSearch" type="search" placeholder="Buscar por nome ou texto">
                                 <select id="ratingFilter"><option value="">Todas as notas</option><option value="5">5 estrelas</option><option value="4">4 estrelas</option><option value="3">3 estrelas</option><option value="2">2 estrelas</option><option value="1">1 estrela</option></select>
@@ -210,7 +210,7 @@
                                         <td><div class="stars"><% for(let i=1;i<=5;i++){ %><i class="<%= i<=g.rating ? 'ri-star-fill':'ri-star-line' %>"></i><% } %></div></td>
                                         <td><div class="review-copy"><%= g.comment %></div></td>
                                         <td><span class="status-pill <%= g.ativo ? 'on':'off' %>"><i class="<%= g.ativo ? 'ri-checkbox-circle-fill':'ri-eye-off-fill' %>"></i><%= g.ativo ? 'Publicada':'Oculta' %></span></td>
-                                        <td><form action="/admin/depoimentos/google/<%= g.id %>/toggle" method="POST"><button class="toggle-btn" type="submit"><%= g.ativo ? 'Ocultar':'Publicar' %></button></form></td>
+                                        <td><div style="display:flex; gap:7px; flex-wrap:wrap"><form action="/admin/depoimentos/google/<%= g.id %>/toggle" method="POST"><button class="toggle-btn" type="submit"><%= g.ativo ? 'Ocultar':'Publicar' %></button></form><form action="/admin/depoimentos/google/<%= g.id %>/delete" method="POST" onsubmit="return confirm('Excluir esta avaliação definitivamente? Ela não voltará nas próximas sincronizações.')"><button class="toggle-btn" type="submit" style="color:#dc2626"><i class="ri-delete-bin-line"></i> Excluir</button></form></div></td>
                                     </tr>
                                 <% }) %>
                                 </tbody>
