@@ -1789,6 +1789,18 @@ app.get('/admin/depoimentos', async (req, res) => {
 app.post('/admin/depoimentos/connect-google', async (req, res) => {
     try {
         const place = await getPlaceDetails(req.body.google_place || '');
+        const [currentConnection] = await pool.execute(
+            'SELECT place_id FROM reviews_google_connection WHERE id = 1'
+        );
+        const isChangingPlace = Boolean(
+            currentConnection[0]?.place_id && currentConnection[0].place_id !== place.id
+        );
+
+        // As avaliacoes do Google ficam em cache. Ao trocar de empresa, limpe o
+        // cache anterior para nao misturar depoimentos de dois estabelecimentos.
+        if (isChangingPlace) {
+            await pool.execute('DELETE FROM google_reviews');
+        }
         await pool.execute(`INSERT INTO reviews_google_connection
             (id, place_id, business_name, business_address, google_url, write_review_url, rating, review_count, connected_at)
             VALUES (1,?,?,?,?,?,?,?,NOW()) ON DUPLICATE KEY UPDATE place_id=VALUES(place_id),
