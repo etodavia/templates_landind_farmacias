@@ -115,6 +115,15 @@ function extractGoogleMapsSearch(value = '') {
     }
 }
 
+function extractGoogleMapsCoordinates(value = '') {
+    const match = String(value).match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    const latitude = Number(match[1]);
+    const longitude = Number(match[2]);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    return { latitude, longitude };
+}
+
 async function getPlaceDetails(input) {
     const apiKey = googlePlacesApiKey();
     if (!apiKey) throw new Error('Configure GOOGLE_PLACES_API_KEY no .env do servidor.');
@@ -122,10 +131,17 @@ async function getPlaceDetails(input) {
     let placeId = extractGooglePlaceId(normalizedInput);
     if (!placeId) {
         const textQuery = extractGoogleMapsSearch(normalizedInput);
+        const coordinates = extractGoogleMapsCoordinates(normalizedInput);
+        const searchBody = { textQuery, languageCode: 'pt-BR' };
+        if (coordinates) {
+            searchBody.locationBias = {
+                circle: { center: coordinates, radius: 250 }
+            };
+        }
         const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey, 'X-Goog-FieldMask': 'places.id' },
-            body: JSON.stringify({ textQuery, languageCode: 'pt-BR' })
+            body: JSON.stringify(searchBody)
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error?.message || 'Empresa não localizada no Google.');
