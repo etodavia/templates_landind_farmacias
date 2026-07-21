@@ -387,6 +387,15 @@ async function setupDB() {
         }
         console.log('✅ DATABASE: Estrutura de Configurações Sincronizada.');
 
+        await pool.execute(`
+            CREATE TABLE IF NOT EXISTS configuracoes_visuais (
+                id TINYINT PRIMARY KEY DEFAULT 1,
+                hamburger_color VARCHAR(20) DEFAULT '#FFFFFF',
+                social_icon_size DECIMAL(4,2) DEFAULT 1.25
+            )
+        `);
+        await pool.execute('INSERT IGNORE INTO configuracoes_visuais (id) VALUES (1)');
+
         // Tabelas de Comentários e Depoimentos
         await pool.execute(`
             CREATE TABLE IF NOT EXISTS comentarios (
@@ -766,7 +775,12 @@ app.use(async (req, res, next) => {
 
     try {
         const [rows] = await pool.execute('SELECT * FROM configuracoes_globais WHERE id = 1 LIMIT 1');
-        const settings = rows[0] || { whatsapp: '5511999999999', cnpj: '00.000.000/0001-00' };
+        let visualSettings = {};
+        try {
+            const [visualRows] = await pool.execute('SELECT * FROM configuracoes_visuais WHERE id = 1 LIMIT 1');
+            visualSettings = visualRows[0] || {};
+        } catch (visualError) {}
+        const settings = { whatsapp: '5511999999999', cnpj: '00.000.000/0001-00', ...(rows[0] || {}), ...visualSettings };
         
         // Verificação de Status da Licença (Carência de 30 dias / Expirada)
         let licenseStatus = 'active'; // active, grace, expired
@@ -998,8 +1012,9 @@ app.get('/', async (req, res) => {
         console.error('❌ CRITICAL HOME ROUTE ERROR:', e);
         const siteName = res.locals.settings?.site_name || 'Sua Empresa';
         res.render('index', {
-            title: `${siteName} | Mudanças e Logística`,
-            description: `${siteName}: soluções de mudanças e logística com atendimento personalizado. Solicite um orçamento.`,
+            title: res.locals.settings?.meta_title_home || `${siteName} | Mudanças e Logística`,
+            description: res.locals.settings?.meta_description_home || `Conheça os produtos e serviços da ${siteName}.`,
+            keywords: res.locals.settings?.meta_keywords || '',
             posts: [], services: [], team: [], testimonials: [], testimonialSource: 'manual', beneficios: [], banners: [], promotionalBanners: []
         });
     }
@@ -1120,7 +1135,12 @@ app.post('/api/licenca/ativar', requireApiAuth, async (req, res) => {
 app.get('/admin/conteudo', async (req, res) => {
     try {
         const [rows] = await pool.execute('SELECT * FROM configuracoes_globais WHERE id = 1');
-        const settings = rows[0] || {};
+        let visualSettings = {};
+        try {
+            const [visualRows] = await pool.execute('SELECT * FROM configuracoes_visuais WHERE id = 1');
+            visualSettings = visualRows[0] || {};
+        } catch (visualError) {}
+        const settings = { ...(rows[0] || {}), ...visualSettings };
         const [beneficios] = await pool.execute('SELECT * FROM beneficios ORDER BY ordem ASC, created_at ASC');
         const [promotionalBanners] = await pool.execute('SELECT * FROM banners WHERE posicao = "promocional" ORDER BY ordem ASC, created_at ASC LIMIT 2');
         const [filiais] = await pool.execute('SELECT * FROM filiais ORDER BY nome ASC');
@@ -1319,6 +1339,16 @@ app.post('/admin/conteudo', handleCmsUpload, async (req, res) => {
     }
 
     // 2. FILTRAGEM E UPDATE DAS CONFIGURAÇÕES GLOBAIS
+    try {
+        await pool.execute(`
+            INSERT INTO configuracoes_visuais (id, hamburger_color, social_icon_size)
+            VALUES (1, ?, ?)
+            ON DUPLICATE KEY UPDATE hamburger_color = VALUES(hamburger_color), social_icon_size = VALUES(social_icon_size)
+        `, [updateData.hamburger_color || '#FFFFFF', updateData.social_icon_size || '1.25']);
+    } catch (visualError) {
+        console.error('Erro ao salvar configurações visuais do cabeçalho:', visualError.message);
+    }
+
     let existingConfigColumns = new Set(validColumns);
     try {
         const [configColumns] = await pool.execute('SHOW COLUMNS FROM configuracoes_globais');

@@ -49,7 +49,7 @@
                 %>
                 <% socialLinksHeader.forEach(item => { %>
                     <% if (item.network && item.url && socialIconsMap[item.network]) { %>
-                        <a href="<%= item.url %>" target="_blank" style="color: white; text-decoration: none;"><i class="<%= socialIconsMap[item.network] %>"></i></a>
+                        <a href="<%= item.url %>" target="_blank" class="topbar-social-link" aria-label="<%= item.network %>"><i class="<%= socialIconsMap[item.network] %>"></i></a>
                     <% } %>
                 <% }) %>
             </div>
@@ -104,7 +104,7 @@
         
         <!-- MOBILE/TABLET QUICK ICONS (ENTRE LOGO E BOTÃO) -->
         <div class="header-mobile-icons" style="display: flex; align-items: center; gap: 15px;">
-            <button id="mobile-menu-btn" style="background: none; border: none; color: white; font-size: 2.8rem; cursor: pointer; padding: 0;">
+            <button id="mobile-menu-btn" aria-label="Abrir menu">
                 <i class="ri-menu-line"></i>
             </button>
         </div>

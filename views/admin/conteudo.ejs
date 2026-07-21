@@ -353,6 +353,16 @@
                             <input type="number" step="0.05" name="header_icon_size" value="<%= settings.header_icon_size || '1.10' %>">
                             <p class="field-note">Padrão: 1.10rem</p>
                         </div>
+                        <div class="form-group">
+                            <label>Cor do Menu Hambúrguer</label>
+                            <input type="color" name="hamburger_color" value="<%= settings.hamburger_color || '#FFFFFF' %>">
+                            <p class="field-note">Cor das três linhas no tablet e no celular.</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Tamanho dos Ícones das Redes Sociais (rem)</label>
+                            <input type="number" min="0.8" max="3" step="0.05" name="social_icon_size" value="<%= settings.social_icon_size || '1.25' %>">
+                            <p class="field-note">Padrão ampliado: 1.25rem</p>
+                        </div>
                     </div>
                 </div>
 

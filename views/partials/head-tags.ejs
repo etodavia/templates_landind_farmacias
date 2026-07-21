@@ -154,6 +154,8 @@
         --topbar-icon-size: <%= remVar(settings.topbar_icon_size, 0.85) %>;
         --header-font-size: <%= remVar(settings.header_font_size, 0.90) %>;
         --header-icon-size: <%= remVar(settings.header_icon_size, 1.10) %>;
+        --hamburger-color: <%= settings.hamburger_color || '#FFFFFF' %>;
+        --social-icon-size: <%= remVar(settings.social_icon_size, 1.25) %>;
     }
 
     body {
@@ -168,6 +170,32 @@
     }
     .topbar i {
         font-size: var(--topbar-icon-size) !important;
+    }
+    .topbar .topbar-social-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        min-height: 28px;
+    }
+    .topbar .topbar-social-link i {
+        font-size: var(--social-icon-size) !important;
+    }
+    #mobile-menu-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: var(--hamburger-color);
+        font-size: 3.35rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px;
+        min-width: 56px;
+        min-height: 56px;
     }
     header .menu-item-link, header .roll-btn {
         font-size: var(--header-font-size) !important;
@@ -191,6 +219,11 @@
             --title-page-size: <%= remVar(settings.title_size_page_mobile, 2.3) %>;
             --title-section-size: <%= remVar(settings.title_size_section_mobile, 2.1) %>;
             --title-card-size: <%= remVar(settings.title_size_card_mobile, 1.2) %>;
+        }
+        #mobile-menu-btn {
+            font-size: 3.15rem;
+            min-width: 52px;
+            min-height: 52px;
         }
     }
 
