@@ -838,6 +838,11 @@
                                     <label>Imagem retangular</label>
                                     <input type="file" name="promotional_banner_<%= campaignIndex %>_file" accept="image/png,image/jpeg,image/webp" <%= campaign.imagem ? '' : 'required' %>>
                                 </div>
+                                <div class="form-group" style="margin-top:16px">
+                                    <label>Mensagem do WhatsApp</label>
+                                    <textarea name="promotional_banner_<%= campaignIndex %>_whatsapp_message" rows="3" placeholder="Olá, tenho interesse nesta campanha."><%= campaign.texto_botao || '' %></textarea>
+                                    <p class="field-note">Ao tocar na campanha, o visitante será direcionado ao WhatsApp principal.</p>
+                                </div>
                                 <% if (campaign.imagem) { %>
                                     <img src="<%= campaign.imagem %>" alt="" style="display:block;width:100%;aspect-ratio:1.72/1;object-fit:cover;margin-top:16px;border-radius:14px;background:#f1f5f9">
                                 <% } %>

@@ -1321,19 +1321,20 @@ app.post('/admin/conteudo', handleCmsUpload, async (req, res) => {
     for (let i = 0; i < 2; i++) {
         const bannerId = req.body[`promotional_banner_${i}_id`];
         const title = (req.body[`promotional_banner_${i}_title`] || '').trim();
+        const whatsappMessage = (req.body[`promotional_banner_${i}_whatsapp_message`] || '').trim();
         const currentImage = req.body[`promotional_banner_${i}_image`] || '';
         const uploaded = req.files && req.files[`promotional_banner_${i}_file`];
         const image = uploaded ? `/uploads/${uploaded[0].filename}` : currentImage;
 
         if (bannerId) {
             await pool.execute(
-                'UPDATE banners SET titulo = ?, imagem = ?, ordem = ?, ativo = 1, posicao = "promocional" WHERE id = ?',
-                [title, image, i, bannerId]
+                'UPDATE banners SET titulo = ?, imagem = ?, texto_botao = ?, ordem = ?, ativo = 1, posicao = "promocional" WHERE id = ?',
+                [title, image, whatsappMessage, i, bannerId]
             );
         } else if (image) {
             await pool.execute(
-                'INSERT INTO banners (titulo, imagem, link, texto_botao, ordem, ativo, posicao) VALUES (?, ?, "", "", ?, 1, "promocional")',
-                [title, image, i]
+                'INSERT INTO banners (titulo, imagem, link, texto_botao, ordem, ativo, posicao) VALUES (?, ?, "", ?, ?, 1, "promocional")',
+                [title, image, whatsappMessage, i]
             );
         }
     }
@@ -1513,7 +1514,8 @@ app.get('/admin/banners', async (req, res) => {
 });
 app.post('/admin/banners', upload.single('imagem_file'), async (req, res) => {
     try {
-        if (!req.file) return res.redirect('/admin/banners?error=imagem');
+        const imagem = req.file ? `/uploads/${req.file.filename}` : req.body.imagem;
+        if (!imagem) return res.redirect('/admin/banners?error=imagem');
         const { titulo, link, texto_botao, ordem, posicao } = req.body;
         if (posicao === 'promocional') {
             const [[{ total }]] = await pool.execute('SELECT COUNT(*) AS total FROM banners WHERE posicao = "promocional"');
@@ -1521,7 +1523,7 @@ app.post('/admin/banners', upload.single('imagem_file'), async (req, res) => {
         }
         await pool.execute(
             'INSERT INTO banners (titulo, imagem, link, texto_botao, ordem, ativo, posicao) VALUES (?, ?, ?, ?, ?, 1, ?)',
-            [titulo || '', `/uploads/${req.file.filename}`, link || '', texto_botao || '', parseInt(ordem) || 0, posicao === 'promocional' ? 'promocional' : 'topo']
+            [titulo || '', imagem, link || '', texto_botao || '', parseInt(ordem) || 0, posicao === 'promocional' ? 'promocional' : 'topo']
         );
         res.redirect('/admin/banners?success=1');
     } catch (error) {
@@ -1592,6 +1594,23 @@ app.post('/admin/servicos/delete/:id', async (req, res) => {
 });
 
 // --- Banco de Imagens (Mídia) ---
+app.get('/admin/api/midias', async (req, res) => {
+    try {
+        const dir = path.join(__dirname, 'public', 'uploads');
+        if (!fs.existsSync(dir)) return res.json([]);
+        const files = fs.readdirSync(dir).map(file => {
+            const filepath = path.join(dir, file);
+            const stats = fs.statSync(filepath);
+            return { name: file, url: `/uploads/${file}`, size: stats.size, mtime: stats.mtime };
+        }).filter(file => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name))
+          .sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
+        res.json(files);
+    } catch (error) {
+        console.error('Erro ao listar o banco de mídias:', error);
+        res.status(500).json({ error: 'Erro ao carregar as imagens.' });
+    }
+});
+
 app.get('/admin/midia', async (req, res) => {
     try {
         const fs = require('fs');
@@ -1877,6 +1896,28 @@ app.post('/admin/depoimentos/disconnect-google', async (req, res) => {
 app.post('/admin/depoimentos/google/:id/toggle', async (req, res) => {
     await pool.execute('UPDATE google_reviews SET ativo = NOT ativo WHERE id = ?', [req.params.id]);
     res.redirect('/admin/depoimentos#avaliacoes');
+});
+
+app.post('/admin/midia/delete-bulk', express.urlencoded({ extended: true }), (req, res) => {
+    try {
+        const uploadsDir = path.resolve(__dirname, 'public', 'uploads');
+        const submitted = Array.isArray(req.body.filenames) ? req.body.filenames : [req.body.filenames];
+        const filenames = [...new Set(submitted.filter(Boolean))].slice(0, 500);
+        let deleted = 0;
+
+        for (const filename of filenames) {
+            if (typeof filename !== 'string' || path.basename(filename) !== filename || !/\.(jpg|jpeg|png|webp|gif|svg)$/i.test(filename)) continue;
+            const filepath = path.resolve(uploadsDir, filename);
+            if (path.dirname(filepath) !== uploadsDir || !fs.existsSync(filepath) || !fs.statSync(filepath).isFile()) continue;
+            fs.unlinkSync(filepath);
+            deleted++;
+        }
+
+        res.redirect(`/admin/midia?success=1&deleted=${deleted}`);
+    } catch (e) {
+        console.error('Erro ao excluir mídias em massa:', e);
+        res.redirect('/admin/midia?error=1');
+    }
 });
 app.post('/admin/depoimentos/google/:id/delete', async (req, res) => {
     const [rows] = await pool.execute('SELECT review_id FROM google_reviews WHERE id = ?', [req.params.id]);

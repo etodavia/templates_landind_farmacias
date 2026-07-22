@@ -493,19 +493,6 @@
                         }
                         .servicesSwiper { padding-bottom: 40px; }
                         .servicesSwiper .swiper-slide { height: auto !important; }
-                        @media (min-width: 1024px) {
-                            #servicos .servicesSwiper .swiper-wrapper {
-                                display: grid !important;
-                                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-                                gap: 20px !important;
-                                transform: none !important;
-                                width: 100% !important;
-                            }
-                            #servicos .servicesSwiper .swiper-slide {
-                                width: auto !important;
-                                margin-right: 0 !important;
-                            }
-                        }
                     </style>
                     <section id="servicos" class="layout-<%= style.layout_model || 'model1' %>" style="background: var(--bg-sand); padding: 60px 0; <%= styleAttr %>">
                         <div class="container">
@@ -541,7 +528,17 @@
                                                         <% } %>
                                                     </div>
                                                     <h3><%= s.titulo %></h3>
-                                                    <a href="https://wa.me/<%= (settings.whatsapp || '').replace(/\D/g, '') %>?text=<%= encodeURIComponent('Olá, tenho interesse no item ' + s.titulo + ', poderia me dar mais informações?') %>" target="_blank" style="text-decoration: none;">
+                                                    <% if (s.preco_de) { %>
+                                                        <div class="product-price-old">De R$ <%= Number(s.preco_de).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></div>
+                                                    <% } %>
+                                                    <% if (s.preco_por) { %>
+                                                        <div class="product-price-current">
+                                                            <small>R$</small>
+                                                            <strong><%= Number(s.preco_por).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></strong>
+                                                            <% if (s.unidade) { %><small>/<%= s.unidade %></small><% } %>
+                                                        </div>
+                                                    <% } %>
+                                                    <a href="https://wa.me/<%= (settings.whatsapp || '').replace(/\D/g, '') %>?text=<%= encodeURIComponent('Olá, tenho interesse no item ' + s.titulo + ', poderia me dar mais informações?') %>" target="_blank" class="product-whatsapp-link">
                                                         <button type="button" style="width: 100%; cursor: pointer;">Tenho Interesse</button>
                                                     </a>
                                                 </article>
@@ -600,7 +597,7 @@
                                 <div class="swiper-pagination services-pagination" style="position: relative; margin-top: 20px;"></div>
                                 <!-- Setas de navegação -->
                                 <div class="swiper-button-next services-next" style="color: var(--navy-blue); transform: translateX(10px);"></div>
-                                <div class="swiper-button-prev" style="color: var(--navy-blue); transform: translateX(-10px);"></div>
+                                <div class="swiper-button-prev services-prev" style="color: var(--navy-blue); transform: translateX(-10px);"></div>
                             </div>
                         </div>
                     </section>
@@ -681,7 +678,8 @@
                             <div class="promotional-grid">
                                 <% if (locals.promotionalBanners && promotionalBanners.length) { %>
                                     <% promotionalBanners.slice(0, 2).forEach(banner => { %>
-                                        <a class="promotional-tile" href="<%= banner.link || '#servicos' %>" data-reveal="up">
+                                        <% const campaignMessage = banner.texto_botao || ('Olá, tenho interesse na campanha ' + (banner.titulo || 'promocional') + '. Poderia me passar mais informações?'); %>
+                                        <a class="promotional-tile btn-whatsapp-conversion" href="https://wa.me/<%= (settings.whatsapp || '').replace(/\D/g, '') %>?text=<%= encodeURIComponent(campaignMessage) %>" target="_blank" rel="noopener" data-reveal="up">
                                             <% if (banner.titulo) { %><strong><%= banner.titulo %></strong><% } %>
                                             <img src="<%= banner.imagem %>" alt="<%= banner.titulo || 'Campanha promocional' %>" loading="lazy">
                                         </a>
